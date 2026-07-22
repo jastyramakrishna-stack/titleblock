@@ -16,21 +16,22 @@ import {
 // Palette / type tokens — blueprint / drafting-table theme
 // ---------------------------------------------------------------------------
 const C = {
-  bg: "#0E1F35",
-  panel: "#122A47",
-  panelAlt: "#0A1830",
-  gridLine: "rgba(143,176,204,0.10)",
-  border: "#25496B",
-  borderSoft: "#1C3B58",
-  text: "#EAF1F6",
-  textDim: "#93B3CC",
-  textFaint: "#5E7E99",
-  teal: "#4FD1C5",
-  stamp: "#C1272D",
-  amber: "#D9A62E",
-  violet: "#9B7FD4",
-  green: "#5FB489",
-  steel: "#6C8CBF",
+  bg: "#F4F7FC",
+  panel: "#FFFFFF",
+  panelAlt: "#EEF3FB",
+  gridLine: "rgba(59,130,246,0.08)",
+  border: "#DCE4F0",
+  borderSoft: "#E8EEF7",
+  text: "#1B2942",
+  textDim: "#48597A",
+  textFaint: "#8598B8",
+  teal: "#0EA5A6",
+  stamp: "#E23744",
+  amber: "#F5A623",
+  violet: "#8B5CF6",
+  green: "#16A34A",
+  steel: "#3B82F6",
+  onAccent: "#FFFFFF",
 };
 
 const FONT_DISPLAY = "'Space Grotesk', sans-serif";
@@ -287,10 +288,10 @@ export default function TitleBlock() {
     >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
-        ::selection { background: ${C.teal}; color: ${C.panelAlt}; }
+        ::selection { background: ${C.teal}; color: ${C.onAccent}; }
         .tb-scroll::-webkit-scrollbar { width: 8px; }
         .tb-scroll::-webkit-scrollbar-thumb { background: ${C.borderSoft}; border-radius: 4px; }
-        .tb-input:focus { outline: none; border-color: ${C.teal} !important; box-shadow: 0 0 0 3px rgba(79,209,197,0.15); }
+        .tb-input:focus { outline: none; border-color: ${C.teal} !important; box-shadow: 0 0 0 3px rgba(14,165,166,0.15); }
         .tb-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
         @keyframes stampIn { 0% { transform: scale(1.5) rotate(-14deg); opacity: 0; } 100% { transform: scale(1) rotate(-8deg); opacity: 1; } }
       `}</style>
@@ -342,7 +343,7 @@ export default function TitleBlock() {
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-sm font-medium text-sm transition"
               style={{
                 background: C.teal,
-                color: C.panelAlt,
+                color: C.onAccent,
                 fontFamily: FONT_DISPLAY,
                 fontWeight: 600,
               }}
@@ -434,7 +435,7 @@ export default function TitleBlock() {
                   <button
                     onClick={clearAll}
                     className="flex-1 py-2 rounded-sm text-xs"
-                    style={{ background: C.stamp, color: C.text, fontFamily: FONT_MONO }}
+                    style={{ background: C.stamp, color: C.onAccent, fontFamily: FONT_MONO }}
                   >
                     confirm clear
                   </button>
@@ -559,7 +560,7 @@ function FormView({
         <button
           onClick={onJumpPrev}
           className="w-full flex items-center gap-2 px-4 py-2.5 mb-6 rounded-sm text-left"
-          style={{ background: "rgba(79,209,197,0.08)", border: `1px dashed ${C.teal}` }}
+          style={{ background: "rgba(14,165,166,0.08)", border: `1px dashed ${C.teal}` }}
         >
           <Link2 size={14} color={C.teal} />
           <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: C.teal }}>
@@ -604,7 +605,7 @@ function FormView({
           className="tb-btn-primary flex items-center gap-2 px-5 py-2.5 rounded-sm"
           style={{
             background: C.teal,
-            color: C.panelAlt,
+            color: C.onAccent,
             fontFamily: FONT_DISPLAY,
             fontWeight: 600,
             fontSize: 14,
@@ -686,7 +687,7 @@ function ArtifactView({ artifact, artifacts, onBack, onJump, onRevise }) {
         <button
           onClick={() => onJump(prev.id)}
           className="w-full flex items-center gap-2 px-4 py-2.5 mb-4 rounded-sm text-left"
-          style={{ background: "rgba(79,209,197,0.08)", border: `1px dashed ${C.teal}` }}
+          style={{ background: "rgba(14,165,166,0.08)", border: `1px dashed ${C.teal}` }}
         >
           <Link2 size={14} color={C.teal} />
           <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: C.teal }}>
