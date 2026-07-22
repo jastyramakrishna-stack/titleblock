@@ -16,30 +16,39 @@ import {
 // Palette / type tokens — blueprint / drafting-table theme
 // ---------------------------------------------------------------------------
 const C = {
-  bg: "#0E1F35",
-  panel: "#122A47",
-  panelAlt: "#0A1830",
-  gridLine: "rgba(143,176,204,0.10)",
-  border: "#25496B",
-  borderSoft: "#1C3B58",
-  text: "#EAF1F6",
-  textDim: "#93B3CC",
-  textFaint: "#5E7E99",
-  teal: "#4FD1C5",
-  stamp: "#C1272D",
-  amber: "#D9A62E",
-  violet: "#9B7FD4",
-  green: "#5FB489",
-  steel: "#6C8CBF",
+  bg: "#C7D5EC",
+  panel: "#FFFFFF",
+  panelAlt: "#BCCCE7",
+  gridLine: "rgba(30,64,175,0.14)",
+  border: "#9FB4D6",
+  borderSoft: "#AFC1DE",
+  text: "#0F1A2E",
+  textDim: "#2E3F5C",
+  textFaint: "#5A6E90",
+  teal: "#0D9488",
+  stamp: "#DC2626",
+  amber: "#D97706",
+  violet: "#7C3AED",
+  green: "#15803D",
+  steel: "#2563EB",
+  onAccent: "#FFFFFF",
 };
 
 const FONT_DISPLAY = "'Space Grotesk', sans-serif";
 const FONT_MONO = "'IBM Plex Mono', monospace";
 const FONT_BODY = "'Inter', sans-serif";
 
+const INDUSTRIES = [
+  { id: "construction", label: "Construction", color: C.amber },
+  { id: "manufacturing", label: "Manufacturing", color: C.steel },
+  { id: "software", label: "Software / IT", color: C.teal },
+  { id: "pharmacy", label: "Pharmacy", color: C.violet },
+];
+
 const TEMPLATES = [
   {
     id: "software",
+    industry: "software",
     label: "Software Release Note",
     color: C.teal,
     fields: [
@@ -60,6 +69,7 @@ const TEMPLATES = [
   },
   {
     id: "sprint",
+    industry: "software",
     label: "Sprint Status Report",
     color: C.amber,
     fields: [
@@ -81,6 +91,7 @@ const TEMPLATES = [
   },
   {
     id: "design",
+    industry: "software",
     label: "Technical Design Document",
     color: C.violet,
     fields: [
@@ -101,6 +112,7 @@ const TEMPLATES = [
   },
   {
     id: "incident",
+    industry: "software",
     label: "Incident / Bug Report",
     color: C.stamp,
     fields: [
@@ -127,6 +139,7 @@ const TEMPLATES = [
   },
   {
     id: "sow",
+    industry: "software",
     label: "Statement of Work (SOW)",
     color: C.steel,
     fields: [
@@ -148,6 +161,128 @@ const TEMPLATES = [
       },
     ],
   },
+  {
+    id: "constructionProgress",
+    industry: "construction",
+    label: "Construction Progress Report",
+    color: C.amber,
+    fields: [
+      { id: "projectName", label: "Project Name", type: "text", required: true },
+      {
+        id: "phase",
+        label: "Phase",
+        type: "select",
+        required: true,
+        options: ["Site Prep", "Foundation", "Framing", "MEP", "Finishing", "Closeout"],
+      },
+      { id: "completion", label: "Completion %", type: "number", required: true },
+      { id: "budgetUsed", label: "Budget Used (USD)", type: "number", required: true },
+      { id: "incidents", label: "Safety Incidents", type: "number", required: false },
+      { id: "milestone", label: "Next Milestone", type: "text", required: true },
+    ],
+  },
+  {
+    id: "siteSafety",
+    industry: "construction",
+    label: "Site Safety Report",
+    color: C.stamp,
+    fields: [
+      { id: "projectName", label: "Project Name", type: "text", required: true },
+      { id: "inspectionDate", label: "Inspection Date", type: "date", required: true },
+      { id: "inspector", label: "Inspector", type: "text", required: true },
+      { id: "incidentsReported", label: "Incidents Reported", type: "textarea", required: true },
+      { id: "correctiveActions", label: "Corrective Actions", type: "textarea", required: false },
+      {
+        id: "complianceStatus",
+        label: "Compliance Status",
+        type: "select",
+        required: true,
+        options: ["Compliant", "Non-Compliant", "Under Review"],
+      },
+    ],
+  },
+  {
+    id: "productionRun",
+    industry: "manufacturing",
+    label: "Production Run Report",
+    color: C.steel,
+    fields: [
+      { id: "projectName", label: "Line / Product Name", type: "text", required: true },
+      { id: "runDate", label: "Run Date", type: "date", required: true },
+      { id: "unitsProduced", label: "Units Produced", type: "number", required: true },
+      { id: "defectRate", label: "Defect Rate (%)", type: "number", required: true },
+      { id: "downtime", label: "Downtime (hrs)", type: "number", required: false },
+      { id: "supervisor", label: "Shift Supervisor", type: "text", required: true },
+      {
+        id: "status",
+        label: "Status",
+        type: "select",
+        required: true,
+        options: ["Completed", "In Progress", "Delayed"],
+      },
+    ],
+  },
+  {
+    id: "qualityInspection",
+    industry: "manufacturing",
+    label: "Quality Inspection Report",
+    color: C.violet,
+    fields: [
+      { id: "projectName", label: "Product / Batch", type: "text", required: true },
+      { id: "inspectionDate", label: "Inspection Date", type: "date", required: true },
+      { id: "inspector", label: "Inspector", type: "text", required: true },
+      { id: "sampleSize", label: "Sample Size", type: "number", required: true },
+      { id: "defectsFound", label: "Defects Found", type: "textarea", required: false },
+      {
+        id: "result",
+        label: "Result",
+        type: "select",
+        required: true,
+        options: ["Pass", "Fail", "Conditional Pass"],
+      },
+    ],
+  },
+  {
+    id: "batchRecord",
+    industry: "pharmacy",
+    label: "Batch Manufacturing Record",
+    color: C.violet,
+    fields: [
+      { id: "projectName", label: "Product Name", type: "text", required: true },
+      { id: "batchNumber", label: "Batch Number", type: "text", required: true },
+      { id: "manufacturingDate", label: "Manufacturing Date", type: "date", required: true },
+      { id: "quantityProduced", label: "Quantity Produced", type: "number", required: true },
+      { id: "qaReviewer", label: "QA Reviewer", type: "text", required: true },
+      { id: "deviationNotes", label: "Deviation Notes", type: "textarea", required: false },
+      {
+        id: "status",
+        label: "Status",
+        type: "select",
+        required: true,
+        options: ["In Process", "Released", "Rejected", "On Hold"],
+      },
+    ],
+  },
+  {
+    id: "regulatoryCompliance",
+    industry: "pharmacy",
+    label: "Regulatory Compliance Report",
+    color: C.stamp,
+    fields: [
+      { id: "projectName", label: "Product / Site", type: "text", required: true },
+      { id: "regulationRef", label: "Regulation Reference", type: "text", required: true },
+      { id: "auditDate", label: "Audit Date", type: "date", required: true },
+      { id: "findings", label: "Findings", type: "textarea", required: true },
+      { id: "correctiveActionPlan", label: "Corrective Action Plan", type: "textarea", required: false },
+      {
+        id: "complianceStatus",
+        label: "Compliance Status",
+        type: "select",
+        required: true,
+        options: ["Compliant", "Minor Findings", "Major Findings", "Non-Compliant"],
+      },
+    ],
+  },
 ];
 
 const templateOf = (id) => TEMPLATES.find((t) => t.id === id);
@@ -156,13 +291,17 @@ const STORAGE_KEY = "pm-artifacts";
 // ---------------------------------------------------------------------------
 
 export default function TitleBlock() {
-  const [templateId, setTemplateId] = useState(TEMPLATES[0].id);
+  const [industryId, setIndustryId] = useState(INDUSTRIES[0].id);
+  const [templateId, setTemplateId] = useState(
+    TEMPLATES.find((t) => t.industry === INDUSTRIES[0].id).id
+  );
   const [formData, setFormData] = useState({});
   const [artifacts, setArtifacts] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [storageOk, setStorageOk] = useState(true);
   const [viewingId, setViewingId] = useState(null);
   const [showErrors, setShowErrors] = useState(false);
+  const [industryMenuOpen, setIndustryMenuOpen] = useState(false);
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
 
@@ -255,7 +394,17 @@ export default function TitleBlock() {
     setShowErrors(false);
   }
 
+  function changeIndustry(id) {
+    setIndustryId(id);
+    const first = TEMPLATES.find((t) => t.industry === id);
+    setTemplateId(first.id);
+    setFormData({});
+    setShowErrors(false);
+  }
+
   function reviseFrom(artifact) {
+    const t = templateOf(artifact.templateId);
+    setIndustryId(t.industry);
     setTemplateId(artifact.templateId);
     setFormData({ ...artifact.data });
     setViewingId(null);
@@ -287,10 +436,10 @@ export default function TitleBlock() {
     >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
-        ::selection { background: ${C.teal}; color: ${C.panelAlt}; }
+        ::selection { background: ${C.teal}; color: ${C.onAccent}; }
         .tb-scroll::-webkit-scrollbar { width: 8px; }
         .tb-scroll::-webkit-scrollbar-thumb { background: ${C.borderSoft}; border-radius: 4px; }
-        .tb-input:focus { outline: none; border-color: ${C.teal} !important; box-shadow: 0 0 0 3px rgba(79,209,197,0.15); }
+        .tb-input:focus { outline: none; border-color: ${C.teal} !important; box-shadow: 0 0 0 3px rgba(13,148,136,0.15); }
         .tb-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
         @keyframes stampIn { 0% { transform: scale(1.5) rotate(-14deg); opacity: 0; } 100% { transform: scale(1) rotate(-8deg); opacity: 1; } }
       `}</style>
@@ -318,7 +467,7 @@ export default function TitleBlock() {
               style={{ fontFamily: FONT_MONO, color: C.textFaint, fontSize: 11 }}
               className="tracking-wide"
             >
-              IT project artifact control
+              multi-industry artifact control
             </div>
           </div>
         </div>
@@ -342,7 +491,7 @@ export default function TitleBlock() {
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-sm font-medium text-sm transition"
               style={{
                 background: C.teal,
-                color: C.panelAlt,
+                color: C.onAccent,
                 fontFamily: FONT_DISPLAY,
                 fontWeight: 600,
               }}
@@ -434,7 +583,7 @@ export default function TitleBlock() {
                   <button
                     onClick={clearAll}
                     className="flex-1 py-2 rounded-sm text-xs"
-                    style={{ background: C.stamp, color: C.text, fontFamily: FONT_MONO }}
+                    style={{ background: C.stamp, color: C.onAccent, fontFamily: FONT_MONO }}
                   >
                     confirm clear
                   </button>
@@ -463,6 +612,10 @@ export default function TitleBlock() {
             />
           ) : (
             <FormView
+              industryId={industryId}
+              setIndustryId={changeIndustry}
+              industryMenuOpen={industryMenuOpen}
+              setIndustryMenuOpen={setIndustryMenuOpen}
               template={template}
               templateId={templateId}
               setTemplateId={(id) => {
@@ -491,6 +644,10 @@ export default function TitleBlock() {
 // Form (create) view
 // ---------------------------------------------------------------------------
 function FormView({
+  industryId,
+  setIndustryId,
+  industryMenuOpen,
+  setIndustryMenuOpen,
   template,
   templateId,
   setTemplateId,
@@ -505,11 +662,60 @@ function FormView({
   setTemplateMenuOpen,
 }) {
   const missingIds = new Set(missingFields.map((f) => f.id));
+  const industry = INDUSTRIES.find((i) => i.id === industryId);
+  const templatesInIndustry = TEMPLATES.filter((t) => t.industry === industryId);
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-10">
       <div style={{ fontFamily: FONT_MONO, color: C.textFaint, fontSize: 11 }} className="uppercase tracking-widest mb-2">
-        Step 1 — select template
+        Step 1 — type of industry
+      </div>
+
+      {/* Industry dropdown */}
+      <div className="relative mb-8">
+        <button
+          onClick={() => setIndustryMenuOpen(!industryMenuOpen)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-sm"
+          style={{ background: C.panel, border: `1px solid ${C.border}` }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: industry.color }} />
+            <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600 }}>{industry.label}</span>
+          </div>
+          <ChevronDown
+            size={16}
+            color={C.textFaint}
+            style={{ transform: industryMenuOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}
+          />
+        </button>
+        {industryMenuOpen && (
+          <ul
+            className="absolute z-10 w-full mt-1 rounded-sm overflow-hidden"
+            style={{ background: C.panel, border: `1px solid ${C.border}` }}
+          >
+            {INDUSTRIES.map((i) => (
+              <li key={i.id}>
+                <button
+                  onClick={() => {
+                    setIndustryId(i.id);
+                    setIndustryMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left"
+                  style={{
+                    background: i.id === industryId ? C.panelAlt : "transparent",
+                  }}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ background: i.color }} />
+                  <span style={{ fontFamily: FONT_BODY, fontSize: 14 }}>{i.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div style={{ fontFamily: FONT_MONO, color: C.textFaint, fontSize: 11 }} className="uppercase tracking-widest mb-2">
+        Step 2 — select template
       </div>
 
       {/* Template dropdown */}
@@ -534,7 +740,7 @@ function FormView({
             className="absolute z-10 w-full mt-1 rounded-sm overflow-hidden"
             style={{ background: C.panel, border: `1px solid ${C.border}` }}
           >
-            {TEMPLATES.map((t) => (
+            {templatesInIndustry.map((t) => (
               <li key={t.id}>
                 <button
                   onClick={() => {
@@ -559,7 +765,7 @@ function FormView({
         <button
           onClick={onJumpPrev}
           className="w-full flex items-center gap-2 px-4 py-2.5 mb-6 rounded-sm text-left"
-          style={{ background: "rgba(79,209,197,0.08)", border: `1px dashed ${C.teal}` }}
+          style={{ background: "rgba(13,148,136,0.08)", border: `1px dashed ${C.teal}` }}
         >
           <Link2 size={14} color={C.teal} />
           <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: C.teal }}>
@@ -570,7 +776,7 @@ function FormView({
       )}
 
       <div style={{ fontFamily: FONT_MONO, color: C.textFaint, fontSize: 11 }} className="uppercase tracking-widest mb-4">
-        Step 2 — required data
+        Step 3 — required data
       </div>
 
       <div className="flex flex-col gap-4 mb-8">
@@ -604,7 +810,7 @@ function FormView({
           className="tb-btn-primary flex items-center gap-2 px-5 py-2.5 rounded-sm"
           style={{
             background: C.teal,
-            color: C.panelAlt,
+            color: C.onAccent,
             fontFamily: FONT_DISPLAY,
             fontWeight: 600,
             fontSize: 14,
@@ -686,7 +892,7 @@ function ArtifactView({ artifact, artifacts, onBack, onJump, onRevise }) {
         <button
           onClick={() => onJump(prev.id)}
           className="w-full flex items-center gap-2 px-4 py-2.5 mb-4 rounded-sm text-left"
-          style={{ background: "rgba(79,209,197,0.08)", border: `1px dashed ${C.teal}` }}
+          style={{ background: "rgba(13,148,136,0.08)", border: `1px dashed ${C.teal}` }}
         >
           <Link2 size={14} color={C.teal} />
           <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: C.teal }}>
