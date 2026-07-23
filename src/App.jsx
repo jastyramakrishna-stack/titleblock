@@ -10,6 +10,12 @@ import {
   RotateCcw,
   Trash2,
   FileStack,
+  Copy,
+  Download,
+  Save,
+  Eye,
+  RefreshCw,
+  Check,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -287,6 +293,89 @@ const TEMPLATES = [
 
 const templateOf = (id) => TEMPLATES.find((t) => t.id === id);
 const STORAGE_KEY = "pm-artifacts";
+const DRAFT_KEY = "pm-draft";
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function artifactPlainText(artifact, template) {
+  const lines = [
+    template.label.toUpperCase(),
+    artifact.projectName,
+    `REV ${String(artifact.rev).padStart(2, "0")} — ${new Date(artifact.createdAt).toLocaleDateString()}`,
+    "",
+  ];
+  template.fields.forEach((f) => {
+    const v = artifact.data[f.id];
+    if (v || v === 0) lines.push(`${f.label}: ${v}`);
+  });
+  return lines.join("\n");
+}
+
+function artifactDocumentHtml(artifact, template) {
+  const rows = template.fields
+    .map((f) => {
+      const v = artifact.data[f.id];
+      if (!v && v !== 0) return "";
+      return `<tr><td style="padding:6px 14px;font-weight:600;vertical-align:top;white-space:nowrap;color:#444;border-bottom:1px solid #e2e2e2;">${escapeHtml(
+        f.label
+      )}</td><td style="padding:6px 14px;border-bottom:1px solid #e2e2e2;">${escapeHtml(String(v)).replace(
+        /\n/g,
+        "<br/>"
+      )}</td></tr>`;
+    })
+    .join("");
+  return `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;">
+    <h2 style="margin:0 0 4px;">${escapeHtml(artifact.projectName)}</h2>
+    <div style="color:#666;font-size:12px;margin-bottom:16px;">${escapeHtml(
+      template.label
+    )} &middot; REV ${String(artifact.rev).padStart(2, "0")} &middot; ${new Date(
+    artifact.createdAt
+  ).toLocaleDateString()}</div>
+    <table style="border-collapse:collapse;width:100%;">${rows}</table>
+  </div>`;
+}
+
+function downloadArtifactDocx(artifact, template) {
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+  <head><meta charset="utf-8"><title>${escapeHtml(artifact.projectName)}</title></head>
+  <body>${artifactDocumentHtml(artifact, template)}</body></html>`;
+  const blob = new Blob(["\ufeff", html], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${artifact.projectName.replace(/\s+/g, "-")}-REV${String(artifact.rev).padStart(2, "0")}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function downloadArtifactPdf(artifact, template) {
+  const w = window.open("", "_blank");
+  if (!w) return;
+  w.document.write(`<html><head><meta charset="utf-8"><title>${escapeHtml(
+    artifact.projectName
+  )}</title></head><body>${artifactDocumentHtml(artifact, template)}</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 250);
+}
+
+function timeAgo(ts) {
+  if (!ts) return null;
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 10) return "just now";
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min${m === 1 ? "" : "s"} ago`;
+  const h = Math.floor(m / 60);
+  return `${h} hr${h === 1 ? "" : "s"} ago`;
+}
 
 // ---------------------------------------------------------------------------
 
@@ -304,6 +393,10 @@ export default function TitleBlock() {
   const [industryMenuOpen, setIndustryMenuOpen] = useState(false);
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState(null);
+  const [modal, setModal] = useState(null); // { type: 'delete', id } | { type: 'discard', run: fn }
+  const [, forceTick] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -313,8 +406,26 @@ export default function TitleBlock() {
       } catch (e) {
         // no prior data — fresh workspace
       }
+      try {
+        const draftRes = await window.storage.get(DRAFT_KEY, false);
+        if (draftRes && draftRes.value) {
+          const d = JSON.parse(draftRes.value);
+          if (d.industryId) setIndustryId(d.industryId);
+          if (d.templateId) setTemplateId(d.templateId);
+          if (d.formData) setFormData(d.formData);
+          if (d.savedAt) setDraftSavedAt(d.savedAt);
+        }
+      } catch (e) {
+        // no draft on file
+      }
       setLoaded(true);
     })();
+  }, []);
+
+  // tick every 15s so "Saved • Xs ago" stays fresh
+  useEffect(() => {
+    const t = setInterval(() => forceTick((n) => n + 1), 15000);
+    return () => clearInterval(t);
   }, []);
 
   const persist = useCallback(async (list) => {
@@ -328,6 +439,53 @@ export default function TitleBlock() {
 
   const template = templateOf(templateId);
   const viewingArtifact = artifacts.find((a) => a.id === viewingId) || null;
+
+  const isDirty =
+    !viewingArtifact && Object.values(formData).some((v) => String(v || "").trim().length > 0);
+
+  const saveDraft = useCallback(async () => {
+    try {
+      await window.storage.set(
+        DRAFT_KEY,
+        JSON.stringify({ industryId, templateId, formData, savedAt: Date.now() }),
+        false
+      );
+      setDraftSavedAt(Date.now());
+    } catch (e) {
+      // draft save failed silently — non-critical
+    }
+  }, [industryId, templateId, formData]);
+
+  const clearDraft = useCallback(async () => {
+    try {
+      await window.storage.delete(DRAFT_KEY, false);
+    } catch (e) {
+      // nothing to clear
+    }
+    setDraftSavedAt(null);
+  }, []);
+
+  // autosave draft 1.5s after the form goes idle
+  useEffect(() => {
+    if (viewingArtifact || !isDirty) return;
+    const t = setTimeout(() => {
+      saveDraft();
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, viewingArtifact]);
+
+  // warn on tab close / navigation if there's unsaved form data
+  useEffect(() => {
+    function handler(e) {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    }
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   const missingFields = template.fields.filter(
     (f) => f.required && !String(formData[f.id] || "").trim()
@@ -386,12 +544,34 @@ export default function TitleBlock() {
     setViewingId(newArtifact.id);
     setFormData({});
     setShowErrors(false);
+    setPreviewOpen(false);
+    clearDraft();
+  }
+
+  function resetFormFields() {
+    setFormData({});
+    setShowErrors(false);
+  }
+
+  function requestDiscardOrRun(action) {
+    if (isDirty) {
+      setModal({ type: "discard", run: action });
+    } else {
+      action();
+    }
   }
 
   function startNew() {
-    setViewingId(null);
-    setFormData({});
-    setShowErrors(false);
+    requestDiscardOrRun(() => {
+      setViewingId(null);
+      setFormData({});
+      setShowErrors(false);
+      setPreviewOpen(false);
+    });
+  }
+
+  function goToArtifact(id) {
+    requestDiscardOrRun(() => setViewingId(id));
   }
 
   function changeIndustry(id) {
@@ -409,6 +589,37 @@ export default function TitleBlock() {
     setFormData({ ...artifact.data });
     setViewingId(null);
     setShowErrors(false);
+    setPreviewOpen(false);
+  }
+
+  function duplicateFrom(artifact) {
+    const t = templateOf(artifact.templateId);
+    setIndustryId(t.industry);
+    setTemplateId(artifact.templateId);
+    setFormData({ ...artifact.data, projectName: `${artifact.data.projectName} (Copy)` });
+    setViewingId(null);
+    setShowErrors(false);
+    setPreviewOpen(false);
+  }
+
+  function requestDelete(id) {
+    setModal({ type: "delete", id });
+  }
+
+  function handleModalConfirm() {
+    if (!modal) return;
+    if (modal.type === "delete") {
+      const updated = artifacts
+        .filter((a) => a.id !== modal.id)
+        .map((a) => (a.prevId === modal.id ? { ...a, prevId: null, changedFields: [] } : a));
+      setArtifacts(updated);
+      persist(updated);
+      if (viewingId === modal.id) setViewingId(null);
+    } else if (modal.type === "discard") {
+      clearDraft();
+      modal.run();
+    }
+    setModal(null);
   }
 
   async function clearAll() {
@@ -471,11 +682,29 @@ export default function TitleBlock() {
             </div>
           </div>
         </div>
-        <div
-          style={{ fontFamily: FONT_MONO, color: storageOk ? C.textFaint : C.stamp, fontSize: 11 }}
-          className="hidden sm:block"
-        >
-          {storageOk ? `${artifacts.length} artifact${artifacts.length === 1 ? "" : "s"} on file` : "storage unavailable — changes may not persist"}
+        <div className="hidden sm:flex flex-col items-end gap-1">
+          <div style={{ fontFamily: FONT_MONO, color: storageOk ? C.textFaint : C.stamp, fontSize: 11 }}>
+            {storageOk ? `${artifacts.length} artifact${artifacts.length === 1 ? "" : "s"} on file` : "storage unavailable — changes may not persist"}
+          </div>
+          {!viewingArtifact && (
+            <div className="flex items-center gap-2" style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.textFaint }}>
+              {draftSavedAt ? (
+                <span className="flex items-center gap-1">
+                  <Check size={11} color={C.green} /> Saved {timeAgo(draftSavedAt)}
+                </span>
+              ) : (
+                <span>not saved</span>
+              )}
+              {livePrev && (
+                <>
+                  <span>·</span>
+                  <button onClick={() => goToArtifact(livePrev.id)} style={{ color: C.teal }}>
+                    Version History
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -529,10 +758,10 @@ export default function TitleBlock() {
                   const t = templateOf(a.templateId);
                   const active = a.id === viewingId;
                   return (
-                    <li key={a.id}>
+                    <li key={a.id} className="group relative">
                       <button
-                        onClick={() => setViewingId(a.id)}
-                        className="w-full text-left px-3 py-2.5 rounded-sm transition"
+                        onClick={() => goToArtifact(a.id)}
+                        className="w-full text-left pl-3 pr-8 py-2.5 rounded-sm transition"
                         style={{
                           background: active ? C.panelAlt : "transparent",
                           border: `1px solid ${active ? C.borderSoft : "transparent"}`,
@@ -560,6 +789,17 @@ export default function TitleBlock() {
                           <span>·</span>
                           <span>{new Date(a.createdAt).toLocaleDateString()}</span>
                         </div>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          requestDelete(a.id);
+                        }}
+                        title="Delete artifact"
+                        className="absolute top-2.5 right-2 p-1 rounded-sm opacity-0 group-hover:opacity-100 transition"
+                        style={{ color: C.stamp }}
+                      >
+                        <Trash2 size={13} />
                       </button>
                     </li>
                   );
@@ -607,8 +847,10 @@ export default function TitleBlock() {
               artifact={viewingArtifact}
               artifacts={artifacts}
               onBack={startNew}
-              onJump={(id) => setViewingId(id)}
+              onJump={(id) => goToArtifact(id)}
               onRevise={() => reviseFrom(viewingArtifact)}
+              onDuplicate={() => duplicateFrom(viewingArtifact)}
+              onDelete={() => requestDelete(viewingArtifact.id)}
             />
           ) : (
             <FormView
@@ -628,13 +870,76 @@ export default function TitleBlock() {
               missingFields={missingFields}
               showErrors={showErrors}
               livePrev={livePrev}
-              onJumpPrev={() => livePrev && setViewingId(livePrev.id)}
+              onJumpPrev={() => goToArtifact(livePrev.id)}
               onGenerate={handleGenerate}
               templateMenuOpen={templateMenuOpen}
               setTemplateMenuOpen={setTemplateMenuOpen}
+              previewOpen={previewOpen}
+              setPreviewOpen={setPreviewOpen}
+              onReset={() => requestDiscardOrRun(resetFormFields)}
+              onSaveDraft={saveDraft}
             />
           )}
         </main>
+      </div>
+
+      <ConfirmModal
+        open={!!modal}
+        title={modal?.type === "delete" ? "Delete this artifact?" : "Discard unsaved changes?"}
+        message={
+          modal?.type === "delete"
+            ? "This will permanently remove this artifact from the revision log. Newer revisions that reference it will lose that link. This can't be undone."
+            : "You have unfilled form changes that haven't been generated. Use Save Draft first if you want to keep them, or discard to continue."
+        }
+        confirmLabel={modal?.type === "delete" ? "Yes, Delete" : "Discard"}
+        danger={modal?.type === "delete"}
+        onConfirm={handleModalConfirm}
+        onCancel={() => setModal(null)}
+      />
+    </div>
+  );
+}
+
+function ConfirmModal({ open, title, message, confirmLabel, onConfirm, onCancel, danger }) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(15,26,46,0.45)" }}
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm rounded-sm p-6"
+        style={{ background: C.panel, border: `1px solid ${C.border}` }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 16, color: C.text }} className="mb-2">
+          {title}
+        </div>
+        <div style={{ fontFamily: FONT_BODY, fontSize: 13.5, color: C.textDim }} className="mb-6 leading-relaxed">
+          {message}
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-sm text-sm"
+            style={{
+              background: danger ? C.stamp : C.teal,
+              color: C.onAccent,
+              fontFamily: FONT_DISPLAY,
+              fontWeight: 600,
+            }}
+          >
+            {confirmLabel}
+          </button>
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-sm text-sm"
+            style={{ border: `1px solid ${C.border}`, color: C.textDim, fontFamily: FONT_DISPLAY, fontWeight: 500 }}
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -660,13 +965,24 @@ function FormView({
   onGenerate,
   templateMenuOpen,
   setTemplateMenuOpen,
+  previewOpen,
+  setPreviewOpen,
+  onReset,
+  onSaveDraft,
 }) {
   const missingIds = new Set(missingFields.map((f) => f.id));
   const industry = INDUSTRIES.find((i) => i.id === industryId);
   const templatesInIndustry = TEMPLATES.filter((t) => t.industry === industryId);
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-10">
+    <div
+      className={
+        previewOpen
+          ? "max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-start"
+          : "max-w-2xl mx-auto px-6 py-10"
+      }
+    >
+      <div>
       <div style={{ fontFamily: FONT_MONO, color: C.textFaint, fontSize: 11 }} className="uppercase tracking-widest mb-2">
         Step 1 — type of industry
       </div>
@@ -775,8 +1091,17 @@ function FormView({
         </button>
       )}
 
-      <div style={{ fontFamily: FONT_MONO, color: C.textFaint, fontSize: 11 }} className="uppercase tracking-widest mb-4">
-        Step 3 — required data
+      <div className="flex items-center justify-between mb-4">
+        <div style={{ fontFamily: FONT_MONO, color: C.textFaint, fontSize: 11 }} className="uppercase tracking-widest">
+          Step 3 — required data
+        </div>
+        <button
+          onClick={onReset}
+          className="flex items-center gap-1"
+          style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.textFaint }}
+        >
+          <RefreshCw size={11} /> reset form
+        </button>
       </div>
 
       <div className="flex flex-col gap-4 mb-8">
@@ -799,25 +1124,115 @@ function FormView({
         ))}
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div style={{ fontFamily: FONT_MONO, fontSize: 11.5, color: missingFields.length ? C.textFaint : C.green }}>
           {missingFields.length
             ? `${missingFields.length} mandatory field${missingFields.length === 1 ? "" : "s"} remaining`
             : "all mandatory fields complete"}
         </div>
-        <button
-          onClick={onGenerate}
-          className="tb-btn-primary flex items-center gap-2 px-5 py-2.5 rounded-sm"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onSaveDraft}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-sm text-sm"
+            style={{ border: `1px solid ${C.border}`, color: C.textDim, fontFamily: FONT_DISPLAY, fontWeight: 500 }}
+          >
+            <Save size={14} /> Save Draft
+          </button>
+          <button
+            onClick={() => setPreviewOpen(!previewOpen)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-sm text-sm"
+            style={
+              previewOpen
+                ? { background: C.panelAlt, border: `1px solid ${C.teal}`, color: C.teal, fontFamily: FONT_DISPLAY, fontWeight: 600 }
+                : { border: `1px solid ${C.border}`, color: C.textDim, fontFamily: FONT_DISPLAY, fontWeight: 500 }
+            }
+          >
+            <Eye size={14} /> {previewOpen ? "Hide Preview" : "Preview"}
+          </button>
+          <button
+            onClick={onGenerate}
+            className="tb-btn-primary flex items-center gap-2 px-5 py-2.5 rounded-sm"
+            style={{
+              background: C.teal,
+              color: C.onAccent,
+              fontFamily: FONT_DISPLAY,
+              fontWeight: 600,
+              fontSize: 14,
+            }}
+          >
+            Generate Artifact
+          </button>
+        </div>
+      </div>
+      </div>
+
+      {previewOpen && (
+        <div className="lg:sticky lg:top-6">
+          <LivePreview template={template} formData={formData} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LivePreview({ template, formData }) {
+  return (
+    <div className="rounded-sm overflow-hidden" style={{ background: C.panel, border: `1px dashed ${C.border}` }}>
+      <div
+        className="px-4 py-2 flex items-center justify-between"
+        style={{ background: C.panelAlt, borderBottom: `1px solid ${C.borderSoft}` }}
+      >
+        <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.textFaint }} className="uppercase tracking-widest">
+          Live Preview — not yet saved
+        </span>
+        <Eye size={13} color={C.textFaint} />
+      </div>
+      <div className="p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="w-2 h-2 rounded-full" style={{ background: template.color }} />
+          <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: C.textFaint }} className="uppercase tracking-widest">
+            {template.label}
+          </span>
+        </div>
+        <h1
           style={{
-            background: C.teal,
-            color: C.onAccent,
             fontFamily: FONT_DISPLAY,
-            fontWeight: 600,
-            fontSize: 14,
+            fontWeight: 700,
+            fontSize: 22,
+            color: formData.projectName ? C.text : C.textFaint,
+            fontStyle: formData.projectName ? "normal" : "italic",
           }}
         >
-          Generate Artifact
-        </button>
+          {formData.projectName || "Untitled project"}
+        </h1>
+      </div>
+      <div style={{ borderTop: `1px solid ${C.borderSoft}` }}>
+        {template.fields.map((f) => {
+          const v = formData[f.id];
+          const has = v || v === 0;
+          return (
+            <div
+              key={f.id}
+              className="px-6 py-3 flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4"
+              style={{ borderBottom: `1px solid ${C.borderSoft}` }}
+            >
+              <div className="sm:w-40 shrink-0" style={{ fontFamily: FONT_MONO, fontSize: 11, color: C.textFaint }}>
+                {f.label}
+              </div>
+              <div
+                style={{
+                  fontFamily: FONT_BODY,
+                  fontSize: 13.5,
+                  color: has ? C.text : C.textFaint,
+                  fontStyle: has ? "normal" : "italic",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {has ? String(v) : "—"}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -872,11 +1287,22 @@ function FieldInput({ field, value, onChange }) {
 // ---------------------------------------------------------------------------
 // Generated artifact / document view
 // ---------------------------------------------------------------------------
-function ArtifactView({ artifact, artifacts, onBack, onJump, onRevise }) {
+function ArtifactView({ artifact, artifacts, onBack, onJump, onRevise, onDuplicate, onDelete }) {
   const template = templateOf(artifact.templateId);
   const prev = artifact.prevId ? artifacts.find((a) => a.id === artifact.prevId) : null;
   const nextRevs = artifacts.filter((a) => a.prevId === artifact.id);
   const changed = new Set(artifact.changedFields || []);
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(artifactPlainText(artifact, template));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (e) {
+      // clipboard blocked — nothing more we can do client-side
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-10">
@@ -974,13 +1400,55 @@ function ArtifactView({ artifact, artifacts, onBack, onJump, onRevise }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 mt-5">
+      {/* Export row */}
+      <div className="flex flex-wrap items-center gap-2 mt-4">
+        <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.textFaint }} className="uppercase tracking-widest mr-1">
+          Export
+        </span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-sm text-sm"
+          style={{ border: `1px solid ${C.border}`, color: copied ? C.green : C.textDim, fontFamily: FONT_BODY, fontWeight: 500 }}
+        >
+          {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy"}
+        </button>
+        <button
+          onClick={() => downloadArtifactDocx(artifact, template)}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-sm text-sm"
+          style={{ border: `1px solid ${C.border}`, color: C.textDim, fontFamily: FONT_BODY, fontWeight: 500 }}
+        >
+          <Download size={14} /> Download Word
+        </button>
+        <button
+          onClick={() => downloadArtifactPdf(artifact, template)}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-sm text-sm"
+          style={{ border: `1px solid ${C.border}`, color: C.textDim, fontFamily: FONT_BODY, fontWeight: 500 }}
+        >
+          <Download size={14} /> Download PDF
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 mt-5">
         <button
           onClick={onRevise}
           className="flex items-center gap-2 px-4 py-2 rounded-sm text-sm"
           style={{ border: `1px solid ${C.border}`, color: C.textDim, fontFamily: FONT_DISPLAY, fontWeight: 500 }}
         >
           <RotateCcw size={14} /> Revise this artifact
+        </button>
+        <button
+          onClick={onDuplicate}
+          className="flex items-center gap-2 px-4 py-2 rounded-sm text-sm"
+          style={{ border: `1px solid ${C.border}`, color: C.textDim, fontFamily: FONT_DISPLAY, fontWeight: 500 }}
+        >
+          <Copy size={14} /> Duplicate
+        </button>
+        <button
+          onClick={onDelete}
+          className="flex items-center gap-2 px-4 py-2 rounded-sm text-sm"
+          style={{ border: `1px solid ${C.border}`, color: C.stamp, fontFamily: FONT_DISPLAY, fontWeight: 500 }}
+        >
+          <Trash2 size={14} /> Delete
         </button>
         {nextRevs.length > 0 && (
           <button
