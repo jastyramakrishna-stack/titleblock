@@ -25,7 +25,7 @@ const C = {
   bg: "#C7D5EC",
   panel: "#FFFFFF",
   panelAlt: "#BCCCE7",
-  gridLine: "rgba(30,64,175,0.14)",
+  gridLine: "rgba(255,255,255,0.14)",
   border: "#9FB4D6",
   borderSoft: "#AFC1DE",
   text: "#0F1A2E",
@@ -637,11 +637,11 @@ export default function TitleBlock() {
     <div
       style={{
         fontFamily: FONT_BODY,
-        background: C.bg,
         color: C.text,
         minHeight: "100%",
-        backgroundImage: `linear-gradient(${C.gridLine} 1px, transparent 1px), linear-gradient(90deg, ${C.gridLine} 1px, transparent 1px)`,
-        backgroundSize: "24px 24px",
+        backgroundImage: `linear-gradient(${C.gridLine} 1px, transparent 1px), linear-gradient(90deg, ${C.gridLine} 1px, transparent 1px), linear-gradient(120deg, #1E3A8A 0%, #6D28D9 30%, #C026D3 55%, #F59E0B 85%, #FBBF24 100%)`,
+        backgroundSize: "24px 24px, 24px 24px, cover",
+        backgroundAttachment: "fixed, fixed, fixed",
       }}
       className="w-full min-h-screen flex flex-col"
     >
@@ -841,28 +841,37 @@ export default function TitleBlock() {
         </aside>
 
         {/* Main */}
-        <main className="flex-1 min-w-0 overflow-y-auto tb-scroll">
-          {viewingArtifact ? (
-            <ArtifactView
-              artifact={viewingArtifact}
-              artifacts={artifacts}
-              onBack={startNew}
-              onJump={(id) => goToArtifact(id)}
-              onRevise={() => reviseFrom(viewingArtifact)}
-              onDuplicate={() => duplicateFrom(viewingArtifact)}
-              onDelete={() => requestDelete(viewingArtifact.id)}
-            />
-          ) : (
-            <FormView
-              industryId={industryId}
-              setIndustryId={changeIndustry}
-              industryMenuOpen={industryMenuOpen}
-              setIndustryMenuOpen={setIndustryMenuOpen}
-              template={template}
-              templateId={templateId}
-              setTemplateId={(id) => {
-                setTemplateId(id);
-                setFormData({});
+        <main className="flex-1 min-w-0 overflow-y-auto tb-scroll p-4 sm:p-6">
+          <div
+            className="rounded-lg min-h-full"
+            style={{
+              background: "rgba(255,255,255,0.95)",
+              backdropFilter: "blur(6px)",
+              border: `1px solid ${C.border}`,
+              boxShadow: "0 12px 40px rgba(30,20,60,0.25)",
+            }}
+          >
+            {viewingArtifact ? (
+              <ArtifactView
+                artifact={viewingArtifact}
+                artifacts={artifacts}
+                onBack={startNew}
+                onJump={(id) => goToArtifact(id)}
+                onRevise={() => reviseFrom(viewingArtifact)}
+                onDuplicate={() => duplicateFrom(viewingArtifact)}
+                onDelete={() => requestDelete(viewingArtifact.id)}
+              />
+            ) : (
+              <FormView
+                industryId={industryId}
+                setIndustryId={changeIndustry}
+                industryMenuOpen={industryMenuOpen}
+                setIndustryMenuOpen={setIndustryMenuOpen}
+                template={template}
+                templateId={templateId}
+                setTemplateId={(id) => {
+                  setTemplateId(id);
+                  setFormData({});
                 setShowErrors(false);
               }}
               formData={formData}
@@ -878,8 +887,9 @@ export default function TitleBlock() {
               setPreviewOpen={setPreviewOpen}
               onReset={() => requestDiscardOrRun(resetFormFields)}
               onSaveDraft={saveDraft}
-            />
-          )}
+              />
+            )}
+          </div>
         </main>
       </div>
 
@@ -1097,10 +1107,16 @@ function FormView({
         </div>
         <button
           onClick={onReset}
-          className="flex items-center gap-1"
-          style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.textFaint }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm"
+          style={{
+            border: `1px solid ${C.amber}`,
+            color: C.amber,
+            background: "rgba(217,119,6,0.08)",
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+          }}
         >
-          <RefreshCw size={11} /> reset form
+          <RefreshCw size={12} /> reset form
         </button>
       </div>
 
