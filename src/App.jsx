@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   ChevronDown,
   Link2,
@@ -9,6 +9,7 @@ import {
   Trash2,
   FileStack,
   Files,
+  Upload,
   Search,
   X,
   Copy,
@@ -420,6 +421,7 @@ export default function TitleBlock() {
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [modal, setModal] = useState(null); // { type: 'delete', id } | { type: 'discard', run: fn }
   const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
+  const [referenceModalOpen, setReferenceModalOpen] = useState(false);
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -698,7 +700,7 @@ export default function TitleBlock() {
 
       {/* Header */}
       <header
-        className="relative flex items-center justify-between px-6 py-5 shrink-0 overflow-hidden"
+        className="relative flex items-center justify-end px-6 py-7 sm:py-8 shrink-0 overflow-hidden min-h-[104px]"
         style={{
           borderBottom: `1px solid ${C.gold}`,
           backgroundImage: `${HEADER_PATTERN}, radial-gradient(circle at 8% -30%, rgba(212,175,55,0.22), transparent 42%), radial-gradient(circle at 96% 130%, rgba(198,204,216,0.14), transparent 48%), linear-gradient(115deg, #071A1D 0%, #0A2E2C 38%, #0F172A 72%, #111827 100%)`,
@@ -707,41 +709,50 @@ export default function TitleBlock() {
           boxShadow: "0 6px 30px rgba(0,0,0,0.45)",
         }}
       >
-        <div className="relative flex items-center gap-3">
-          <div
-            className="w-10 h-10 flex items-center justify-center rounded-sm shrink-0"
-            style={{ border: `1.5px solid ${C.gold}`, color: C.gold, background: "rgba(212,175,55,0.08)" }}
-          >
-            <FileStack size={18} />
-          </div>
-          <div>
-            <div
-              style={{
-                fontFamily: FONT_HEADER,
-                fontWeight: 800,
-                letterSpacing: "0.07em",
-                backgroundImage: `linear-gradient(90deg, ${C.silver} 0%, #FFFFFF 35%, ${C.gold} 100%)`,
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                color: C.silver,
-              }}
-              className="text-xl sm:text-2xl leading-none"
-            >
-              TITLEBLOCK
+        {/* Centered brand — absolutely positioned so it stays centered regardless of the
+            right-hand status column's width, and collapses cleanly on mobile since that
+            column is hidden below sm anyway. */}
+        <div className="absolute inset-0 flex items-center justify-center px-20 sm:px-32 pointer-events-none">
+          <div className="flex flex-col items-center text-center pointer-events-auto max-w-full">
+            <div className="flex items-center gap-2.5 sm:gap-3.5">
+              <div
+                className="w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center rounded-sm shrink-0"
+                style={{ border: `1.5px solid ${C.gold}`, color: C.gold, background: "rgba(212,175,55,0.08)" }}
+              >
+                <FileStack size={20} className="sm:hidden" />
+                <FileStack size={24} className="hidden sm:block" />
+              </div>
+              <div
+                style={{
+                  fontFamily: FONT_HEADER,
+                  fontWeight: 800,
+                  letterSpacing: "0.06em",
+                  backgroundImage: `linear-gradient(90deg, ${C.silver} 0%, #FFFFFF 35%, ${C.gold} 100%)`,
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  color: C.silver,
+                }}
+                className="text-3xl sm:text-4xl md:text-5xl leading-none whitespace-nowrap"
+              >
+                TITLEBLOCK
+              </div>
             </div>
             <div
               style={{ fontFamily: FONT_MONO, color: "rgba(241,243,247,0.62)", fontSize: 11 }}
-              className="tracking-wide mt-1.5"
+              className="tracking-wide mt-2 sm:text-xs"
             >
               multi-industry artifact control
             </div>
           </div>
         </div>
+
         <div className="relative hidden sm:flex flex-col items-end gap-1">
-          <div style={{ fontFamily: FONT_MONO, color: storageOk ? C.textFaint : C.stamp, fontSize: 11 }}>
-            {storageOk ? `${artifacts.length} artifact${artifacts.length === 1 ? "" : "s"} on file` : "storage unavailable — changes may not persist"}
-          </div>
+          {!storageOk && (
+            <div style={{ fontFamily: FONT_MONO, color: C.stamp, fontSize: 11 }}>
+              storage unavailable — changes may not persist
+            </div>
+          )}
           {!viewingArtifact && (
             <div className="flex items-center gap-2" style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.textFaint }}>
               {draftSavedAt ? (
@@ -783,6 +794,19 @@ export default function TitleBlock() {
               }}
             >
               <Files size={16} /> View Submitted Templates
+            </button>
+            <button
+              onClick={() => setReferenceModalOpen(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-sm font-medium text-sm transition mt-2.5"
+              style={{
+                background: "transparent",
+                border: `1px solid ${C.silverDim}`,
+                color: C.silver,
+                fontFamily: FONT_DISPLAY,
+                fontWeight: 600,
+              }}
+            >
+              <Upload size={16} /> Upload Sample Reference Template
             </button>
             <div
               style={{ fontFamily: FONT_MONO, color: C.textFaint, fontSize: 10.5 }}
@@ -936,6 +960,8 @@ export default function TitleBlock() {
         }}
         onDeleteArtifact={requestDelete}
       />
+
+      <ReferenceTemplateModal open={referenceModalOpen} onClose={() => setReferenceModalOpen(false)} />
     </div>
   );
 }
@@ -1243,6 +1269,292 @@ function SubmittedTemplatesModal({ open, onClose, artifacts, onSelectArtifact, o
               )}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Upload / Preview reference template modal
+// ---------------------------------------------------------------------------
+function ReferenceTemplateModal({ open, onClose }) {
+  const [industryId, setIndustryId] = useState("");
+  const [templateId, setTemplateId] = useState("");
+  const [file, setFile] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [projectName, setProjectName] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) {
+      setIndustryId("");
+      setTemplateId("");
+      setFile(null);
+      setSubmitted(false);
+      setProjectName("");
+      setPreviewOpen(false);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const templatesInIndustry = industryId ? TEMPLATES.filter((t) => t.industry === industryId) : [];
+  const template = templateId ? templateOf(templateId) : null;
+  const fieldsReady = Boolean(industryId && templateId);
+  const canSubmit = Boolean(fieldsReady && file);
+
+  function handleSubmit() {
+    if (!canSubmit) return;
+    setSubmitted(true);
+  }
+
+  const inputStyle = {
+    background: C.panelAlt,
+    border: `1px solid ${C.border}`,
+    color: C.text,
+    fontFamily: FONT_BODY,
+    fontSize: 14,
+  };
+  const labelStyle = { fontFamily: FONT_BODY, fontSize: 13, fontWeight: 500, color: C.textDim };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(4,6,10,0.72)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-lg rounded-sm overflow-hidden flex flex-col"
+        style={{
+          background: C.panel,
+          border: `1px solid ${C.gold}`,
+          maxHeight: "88vh",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reference-modal-title"
+      >
+        <div
+          className="flex items-center justify-between px-5 py-4 shrink-0"
+          style={{ borderBottom: `1px solid ${C.borderSoft}`, background: C.panelAlt }}
+        >
+          <div className="flex items-center gap-2">
+            <Upload size={16} color={C.gold} />
+            <span
+              id="reference-modal-title"
+              style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15, color: C.text }}
+            >
+              Reference Template
+            </span>
+          </div>
+          <button onClick={onClose} style={{ color: C.textFaint }} aria-label="Close dialog">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 flex flex-col gap-4 overflow-y-auto tb-scroll">
+          {/* Shared fields */}
+          <div>
+            <label htmlFor="ref-industry" className="flex items-center gap-1.5 mb-1.5" style={labelStyle}>
+              Type of Industry <span style={{ color: C.stamp }}>*</span>
+            </label>
+            <select
+              id="ref-industry"
+              className="tb-input w-full px-3 py-2.5 rounded-sm"
+              style={inputStyle}
+              value={industryId}
+              onChange={(e) => {
+                setIndustryId(e.target.value);
+                setTemplateId("");
+                setPreviewOpen(false);
+              }}
+            >
+              <option value="">Select…</option>
+              {INDUSTRIES.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="ref-template" className="flex items-center gap-1.5 mb-1.5" style={labelStyle}>
+              Select Template <span style={{ color: C.stamp }}>*</span>
+            </label>
+            <select
+              id="ref-template"
+              className="tb-input w-full px-3 py-2.5 rounded-sm"
+              style={{ ...inputStyle, opacity: industryId ? 1 : 0.5 }}
+              value={templateId}
+              disabled={!industryId}
+              onChange={(e) => {
+                setTemplateId(e.target.value);
+                setPreviewOpen(false);
+              }}
+            >
+              <option value="">{industryId ? "Select…" : "Choose an industry first"}</option>
+              {templatesInIndustry.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div
+            style={{ fontFamily: FONT_MONO, color: C.textFaint, fontSize: 10.5 }}
+            className="uppercase tracking-widest"
+          >
+            {fieldsReady ? `applies to ${template.label}` : "select an industry and template to continue"}
+          </div>
+
+          {/* Upload section */}
+          <div className="pt-2" style={{ borderTop: `1px solid ${C.borderSoft}` }}>
+            <div
+              style={{ fontFamily: FONT_MONO, color: C.textFaint, fontSize: 11 }}
+              className="uppercase tracking-widest mt-2 mb-2.5"
+            >
+              Upload Reference Template
+            </div>
+            <input
+              ref={fileInputRef}
+              id="ref-file-input"
+              type="file"
+              className="sr-only"
+              onChange={(e) => {
+                setFile(e.target.files?.[0] || null);
+                setSubmitted(false);
+              }}
+            />
+            <label
+              htmlFor="ref-file-input"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-sm text-sm cursor-pointer"
+              style={{ border: `1px dashed ${C.silverDim}`, color: file ? C.text : C.textDim, fontFamily: FONT_BODY, fontWeight: 500 }}
+            >
+              <Upload size={15} color={C.silver} />
+              <span className="truncate">{file ? file.name : "Choose a file to upload"}</span>
+            </label>
+
+            <div className="flex items-center justify-between gap-3 mt-3">
+              <div
+                style={{
+                  fontFamily: FONT_MONO,
+                  fontSize: 11,
+                  color: submitted ? C.green : C.textFaint,
+                }}
+              >
+                {submitted
+                  ? "Uploaded successfully"
+                  : canSubmit
+                  ? "Ready to submit"
+                  : "Complete all fields to submit"}
+              </div>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                className="tb-btn-primary flex items-center gap-2 px-4 py-2 rounded-sm text-sm shrink-0"
+                style={{
+                  background: C.teal,
+                  color: C.onAccent,
+                  fontFamily: FONT_DISPLAY,
+                  fontWeight: 600,
+                }}
+              >
+                {submitted && <Check size={14} />} Submit
+              </button>
+            </div>
+          </div>
+
+          {/* Preview section */}
+          <div className="pt-2" style={{ borderTop: `1px solid ${C.borderSoft}` }}>
+            <div
+              style={{ fontFamily: FONT_MONO, color: C.textFaint, fontSize: 11 }}
+              className="uppercase tracking-widest mt-2 mb-2.5"
+            >
+              Preview Sample Reference Template
+            </div>
+            <label htmlFor="ref-projectname" className="flex items-center gap-1.5 mb-1.5" style={labelStyle}>
+              Project Name <span style={{ color: C.textFaint, fontWeight: 400 }}>(optional)</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="ref-projectname"
+                className="tb-input flex-1 min-w-0 px-3 py-2.5 rounded-sm"
+                style={inputStyle}
+                placeholder="e.g. Riverside Tower"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+              />
+              <button
+                type="button"
+                disabled={!fieldsReady}
+                onClick={() => setPreviewOpen(true)}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-sm text-sm shrink-0"
+                style={{
+                  border: `1px solid ${C.gold}`,
+                  color: C.gold,
+                  fontFamily: FONT_DISPLAY,
+                  fontWeight: 600,
+                  opacity: fieldsReady ? 1 : 0.4,
+                }}
+              >
+                <Eye size={14} /> View
+              </button>
+            </div>
+
+            {previewOpen && template && (
+              <div
+                className="mt-4 rounded-sm overflow-hidden"
+                style={{ background: C.panelAlt, border: `1px dashed ${C.goldDim}` }}
+              >
+                <div
+                  className="px-4 py-2 flex items-center justify-between"
+                  style={{ borderBottom: `1px solid ${C.borderSoft}` }}
+                >
+                  <span
+                    style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.textFaint }}
+                    className="uppercase tracking-widest"
+                  >
+                    {template.label} — structure preview
+                  </span>
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: template.color }} />
+                </div>
+                <div className="px-4 py-3">
+                  <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 16, color: C.text }}>
+                    {projectName.trim() || "Untitled project"}
+                  </div>
+                </div>
+                <div>
+                  {template.fields.map((f) => (
+                    <div
+                      key={f.id}
+                      className="px-4 py-2.5 flex items-center gap-3"
+                      style={{ borderTop: `1px solid ${C.borderSoft}` }}
+                    >
+                      <span
+                        style={{ fontFamily: FONT_MONO, fontSize: 11, color: C.textFaint }}
+                        className="w-36 shrink-0 truncate"
+                      >
+                        {f.label}
+                        {f.required && <span style={{ color: C.stamp }}> *</span>}
+                      </span>
+                      <span
+                        style={{ fontFamily: FONT_BODY, fontSize: 12.5, color: C.textFaint, fontStyle: "italic" }}
+                      >
+                        — {f.type} field —
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
