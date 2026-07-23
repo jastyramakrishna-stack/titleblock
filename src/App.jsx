@@ -673,6 +673,25 @@ export default function TitleBlock() {
         .tb-input:focus { outline: none; border-color: ${C.gold} !important; box-shadow: 0 0 0 3px rgba(212,175,55,0.18); }
         .tb-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
         @keyframes stampIn { 0% { transform: scale(1.5) rotate(-14deg); opacity: 0; } 100% { transform: scale(1) rotate(-8deg); opacity: 1; } }
+        @keyframes tbSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes tbSpinRev { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+        @keyframes tbPulse { 0%, 100% { opacity: 0.35; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.07); } }
+        @keyframes tbPulseSlow { 0%, 100% { opacity: 0.22; } 50% { opacity: 0.55; } }
+        @keyframes tbTwinkle { 0%, 100% { opacity: 0.3; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.15); } }
+        @keyframes tbShimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+        @keyframes tbDrift { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
+        .tb-orbit-slow { animation: tbSpin 20s linear infinite; transform-origin: 130px 130px; }
+        .tb-orbit-slow-rev { animation: tbSpinRev 26s linear infinite; transform-origin: 130px 130px; }
+        .tb-pulse-ring { animation: tbPulse 4.5s ease-in-out infinite; transform-origin: 130px 130px; }
+        .tb-pulse-ring-slow { animation: tbPulseSlow 6.5s ease-in-out infinite; }
+        .tb-twinkle { animation: tbTwinkle 2.8s ease-in-out infinite; }
+        .tb-shimmer-bar { background-size: 220% 100%; animation: tbShimmer 4s linear infinite; }
+        .tb-drift { animation: tbDrift 5s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .tb-orbit-slow, .tb-orbit-slow-rev, .tb-pulse-ring, .tb-pulse-ring-slow, .tb-twinkle, .tb-shimmer-bar, .tb-drift {
+            animation: none !important;
+          }
+        }
       `}</style>
 
       {/* Header */}
@@ -773,7 +792,7 @@ export default function TitleBlock() {
             </div>
           </div>
 
-          <div className="flex-1" />
+          <SidebarShowcase />
 
           {artifacts.length > 0 && (
             <div className="p-4" style={{ borderTop: `1px solid ${C.borderSoft}` }}>
@@ -809,6 +828,13 @@ export default function TitleBlock() {
 
         {/* Main */}
         <main className="flex-1 min-w-0 overflow-y-auto tb-scroll p-4 sm:p-6">
+          <div
+            className="tb-shimmer-bar rounded-full mb-4"
+            style={{
+              height: 3,
+              backgroundImage: `linear-gradient(90deg, transparent 0%, ${C.gold} 25%, ${C.silver} 50%, ${C.gold} 75%, transparent 100%)`,
+            }}
+          />
           <div
             className="rounded-lg min-h-full"
             style={{
@@ -884,6 +910,66 @@ export default function TitleBlock() {
         }}
         onDeleteArtifact={requestDelete}
       />
+    </div>
+  );
+}
+
+function SidebarShowcase() {
+  const cx = 130;
+  const cy = 130;
+  return (
+    <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center px-6 py-8 min-h-[220px]">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: `radial-gradient(circle at 50% 45%, rgba(212,175,55,0.10), transparent 60%)`,
+        }}
+      />
+      <svg viewBox="0 0 260 260" className="relative w-40 h-40 tb-drift" style={{ opacity: 0.95 }}>
+        {/* concentric rings */}
+        <circle cx={cx} cy={cy} r="90" fill="none" stroke={C.silver} strokeWidth="1" opacity="0.25" className="tb-pulse-ring-slow" />
+        <circle cx={cx} cy={cy} r="58" fill="none" stroke={C.gold} strokeWidth="1" className="tb-pulse-ring" />
+
+        {/* rotating diamond */}
+        <g className="tb-orbit-slow">
+          <polygon
+            points={`${cx},${cy - 40} ${cx + 40},${cy} ${cx},${cy + 40} ${cx - 40},${cy}`}
+            fill="none"
+            stroke={C.gold}
+            strokeWidth="1"
+          />
+        </g>
+
+        {/* counter-rotating ring of industry dots */}
+        <g className="tb-orbit-slow-rev">
+          {INDUSTRIES.map((ind, idx) => {
+            const angle = (idx / INDUSTRIES.length) * Math.PI * 2 - Math.PI / 2;
+            const x = cx + Math.cos(angle) * 90;
+            const y = cy + Math.sin(angle) * 90;
+            return (
+              <circle
+                key={ind.id}
+                cx={x}
+                cy={y}
+                r="4.5"
+                fill={ind.color}
+                className="tb-twinkle"
+                style={{ animationDelay: `${idx * 0.45}s` }}
+              />
+            );
+          })}
+        </g>
+
+        <circle cx={cx} cy={cy} r="3" fill={C.gold} />
+      </svg>
+
+      <div
+        className="relative mt-5 flex items-center gap-2"
+        style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.textFaint }}
+      >
+        <span className="w-1.5 h-1.5 rounded-full tb-twinkle" style={{ background: C.gold }} />
+        <span className="uppercase tracking-widest">multi-industry control</span>
+      </div>
     </div>
   );
 }
