@@ -686,9 +686,11 @@ export default function TitleBlock() {
         .tb-pulse-ring-slow { animation: tbPulseSlow 6.5s ease-in-out infinite; }
         .tb-twinkle { animation: tbTwinkle 2.8s ease-in-out infinite; }
         .tb-shimmer-bar { background-size: 220% 100%; animation: tbShimmer 4s linear infinite; }
+        @keyframes tbShimmerV { 0% { background-position: 50% 0%; } 100% { background-position: 50% 200%; } }
+        .tb-shimmer-bar-v { background-size: 100% 220%; animation: tbShimmerV 4s linear infinite; }
         .tb-drift { animation: tbDrift 5s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
-          .tb-orbit-slow, .tb-orbit-slow-rev, .tb-pulse-ring, .tb-pulse-ring-slow, .tb-twinkle, .tb-shimmer-bar, .tb-drift {
+          .tb-orbit-slow, .tb-orbit-slow-rev, .tb-pulse-ring, .tb-pulse-ring-slow, .tb-twinkle, .tb-shimmer-bar, .tb-shimmer-bar-v, .tb-drift {
             animation: none !important;
           }
         }
@@ -828,24 +830,47 @@ export default function TitleBlock() {
 
         {/* Main */}
         <main className="flex-1 min-w-0 overflow-y-auto tb-scroll p-4 sm:p-6">
-          <div
-            className="tb-shimmer-bar rounded-full mb-4"
-            style={{
-              height: 3,
-              backgroundImage: `linear-gradient(90deg, transparent 0%, ${C.gold} 25%, ${C.silver} 50%, ${C.gold} 75%, transparent 100%)`,
-            }}
-          />
-          <div
-            className="rounded-lg min-h-full"
-            style={{
-              background: "rgba(20,26,38,0.92)",
-              backdropFilter: "blur(6px)",
-              border: `1px solid ${C.goldDim}`,
-              boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
-            }}
-          >
-            {viewingArtifact ? (
-              <ArtifactView
+          <div className="relative rounded-lg min-h-full">
+            {/* animated shimmer frame — all four sides */}
+            <div
+              className="tb-shimmer-bar absolute left-3 right-3 top-0 rounded-full pointer-events-none z-10"
+              style={{
+                height: 3,
+                backgroundImage: `linear-gradient(90deg, transparent 0%, ${C.gold} 25%, ${C.silver} 50%, ${C.gold} 75%, transparent 100%)`,
+              }}
+            />
+            <div
+              className="tb-shimmer-bar absolute left-3 right-3 bottom-0 rounded-full pointer-events-none z-10"
+              style={{
+                height: 3,
+                backgroundImage: `linear-gradient(90deg, transparent 0%, ${C.gold} 25%, ${C.silver} 50%, ${C.gold} 75%, transparent 100%)`,
+              }}
+            />
+            <div
+              className="tb-shimmer-bar-v absolute top-3 bottom-3 left-0 rounded-full pointer-events-none z-10"
+              style={{
+                width: 3,
+                backgroundImage: `linear-gradient(180deg, transparent 0%, ${C.gold} 25%, ${C.silver} 50%, ${C.gold} 75%, transparent 100%)`,
+              }}
+            />
+            <div
+              className="tb-shimmer-bar-v absolute top-3 bottom-3 right-0 rounded-full pointer-events-none z-10"
+              style={{
+                width: 3,
+                backgroundImage: `linear-gradient(180deg, transparent 0%, ${C.gold} 25%, ${C.silver} 50%, ${C.gold} 75%, transparent 100%)`,
+              }}
+            />
+            <div
+              className="rounded-lg min-h-full"
+              style={{
+                background: "rgba(20,26,38,0.92)",
+                backdropFilter: "blur(6px)",
+                border: `1px solid ${C.goldDim}`,
+                boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+              }}
+            >
+              {viewingArtifact ? (
+                <ArtifactView
                 artifact={viewingArtifact}
                 artifacts={artifacts}
                 onBack={startNew}
@@ -883,6 +908,7 @@ export default function TitleBlock() {
               />
             )}
           </div>
+          </div>
         </main>
       </div>
 
@@ -918,14 +944,14 @@ function SidebarShowcase() {
   const cx = 130;
   const cy = 130;
   return (
-    <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center px-6 py-8 min-h-[220px]">
+    <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center pl-1 pr-4 py-8 min-h-[220px]">
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          backgroundImage: `radial-gradient(circle at 50% 45%, rgba(212,175,55,0.10), transparent 60%)`,
+          backgroundImage: `radial-gradient(circle at 35% 45%, rgba(212,175,55,0.10), transparent 60%)`,
         }}
       />
-      <svg viewBox="0 0 260 260" className="relative w-40 h-40 tb-drift" style={{ opacity: 0.95 }}>
+      <svg viewBox="0 0 260 260" className="relative w-64 h-64 -ml-4 tb-drift" style={{ opacity: 0.95 }}>
         {/* concentric rings */}
         <circle cx={cx} cy={cy} r="90" fill="none" stroke={C.silver} strokeWidth="1" opacity="0.25" className="tb-pulse-ring-slow" />
         <circle cx={cx} cy={cy} r="58" fill="none" stroke={C.gold} strokeWidth="1" className="tb-pulse-ring" />
